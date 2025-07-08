@@ -1,0 +1,48 @@
+kubeDnsUpstream:
+  ports:
+  - name: dns
+    port: 53
+    protocol: UDP
+    targetPort: 53
+  - name: dns-tcp
+    port: 53
+    protocol: TCP
+    targetPort: 53
+  type: ClusterIP
+  selector: kube-dns    
+kubernetesClusterDomain: cluster.local
+localDns:
+  cluster_local:
+    cache:
+      success: "9984 45"
+      denial: "9984 5"
+  external:
+    cache: 15
+  nodeCache:
+    args:
+    - -localip
+    - 169.254.20.10,10.0.0.10
+    - -conf
+    - /etc/Corefile
+    - -upstreamsvc
+    - nodelocaldns-node-local-dns-kube-dns-upstream
+    containerSecurityContext:
+      capabilities:
+        add:
+        - NET_ADMIN
+    image:
+      repository: registry.k8s.io/dns/k8s-dns-node-cache
+      tag: 1.24.0
+    resources:
+      requests:
+        cpu: 25m
+        memory: 5Mi
+  localip: 169.254.20.10
+  dns_upstream: 10.0.0.10
+  ports:
+  - name: metrics
+    port: 9253
+    targetPort: 9253
+  serviceAccount:
+    annotations: {}
+  type: ClusterIP

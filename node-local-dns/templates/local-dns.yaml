@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "node-local-dns.fullname" . }}-local-dns
+  labels:
+  {{- include "node-local-dns.labels" . | nindent 4 }}
+data:
+  Corefile: |
+    cluster.local:53 {
+        errors
+        cache {
+                success {{ .Values.localDns.cluster_local.cache.success }}
+                denial {{ .Values.localDns.cluster_local.cache.denial }}
+        }
+        reload
+        log
+        loop
+        bind {{ .Values.localDns.localip }} {{ .Values.localDns.dns_upstream }}
+        forward . __PILLAR__CLUSTER__DNS__
+        prometheus :9253
+        health {{ .Values.localDns.localip }}:8080
+        }
+    in-addr.arpa:53 {
+        errors
+        cache 30
+        reload
+        log
+        loop
+        bind {{ .Values.localDns.localip }} {{ .Values.localDns.dns_upstream }}
+        forward . __PILLAR__CLUSTER__DNS__
+        prometheus :9253
+        }
+    ip6.arpa:53 {
+        errors
+        cache 30
+        reload
+        log
+        loop
+        bind {{ .Values.localDns.localip }} {{ .Values.localDns.dns_upstream }}
+        forward . __PILLAR__CLUSTER__DNS__
+        prometheus :9253
+        }
+    .:53 {
+        errors
+        cache {{ .Values.localDns.external.cache }}
+        reload
+        log
+        loop
+        bind {{ .Values.localDns.localip }} {{ .Values.localDns.dns_upstream }}
+        forward . __PILLAR__UPSTREAM__SERVERS__
+        prometheus :9253
+        }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "node-local-dns.fullname" . }}-local-dns
+  labels:
+    k8s-app: node-local-dns
+  {{- include "node-local-dns.labels" . | nindent 4 }}
+  annotations:
+    prometheus.io/port: "9253"
+    prometheus.io/scrape: "true"
+spec:
+  type: {{ .Values.localDns.type }}
+  selector:
+    k8s-app: node-local-dns
+  ports:
+  {{- .Values.localDns.ports | toYaml | nindent 2 }}
